@@ -2,20 +2,17 @@
   <div id="app">
     <Header/>
     <router-view/>
-    <Container/>
   </div>
 </template>
 
 <script>
-  import Header from "./Header"
-  import Container from "./Container"
+import Header from './Header'
 
-  export default {
-    components: {
-      Header,
-      Container
-    }
+export default {
+  components: {
+    Header
   }
+}
 </script>
 
 <style lang="scss">

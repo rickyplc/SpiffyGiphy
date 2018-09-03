@@ -1,17 +1,7 @@
 <template>
   <b-container>
     <b-row>
-     <Giff/>
-     <Giff/>
-     <Giff/>
-     <Giff/>
-     <Giff/>
-     <Giff/>
-     <Giff/>
-     <Giff/>
-     <Giff/>
-     <Giff/>
-     <Giff/>
+     <giff v-for="(item, key) in giffItems" v-bind:key="key" v-bind:image-url="item.url" v-bind:image-title="item.title"/>
     </b-row>
   </b-container>
 </template>
@@ -22,6 +12,7 @@ import Giff from './Giff'
 export default {
   components: {
     Giff
-  }
+  },
+  props: ['giffItems']
 }
 </script>
