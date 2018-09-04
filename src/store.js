@@ -4,52 +4,67 @@ import axios from 'axios'
 
 Vue.use(Vuex)
 
+const api = 'http://localhost:8081'
+
+const deffirenceBetweenThenAndNow = (startDate) => {
+  const sDate = new Date(startDate).getTime()
+  let endDate = new Date().getTime()
+  let diffSeconds = (endDate - sDate) / 1000
+
+  return diffSeconds
+}
+
+const getCachedData = (key) => {
+  return JSON.parse(localStorage.getItem(key))
+}
+
 export default new Vuex.Store({
   state: {
     giffItems: []
   },
   mutations: {
-    FETCH_GIFF_ITEMS (state, giffItems) {
-      state.giffItems = giffItems
+    FETCH_GIFF_ITEMS (state, {cacheData, data}) {
+      state.giffItems = state.giffItems.concat(data)
+
+      // Cache the data to local storage
+      if (cacheData) {
+        cacheData.date = new Date()
+        cacheData.data = state.giffItems
+        localStorage.setItem(cacheData.key, JSON.stringify(cacheData))
+      }
     }
   },
   actions: {
-    fetchGiffs ({ commit }) {
+    fetchGiffs ({ commit }, offset) {
       return new Promise((resolve, reject) => {
         let diffSeconds
-        let startDate
-        let giffItems = JSON.parse(localStorage.getItem('giffItems'))
-        let endDate = new Date().getTime()
+        let giffItems = getCachedData('giffItems')
 
-        // If the cache is older than 1 hour then get the data from the API
         if (giffItems) {
-          startDate = new Date(giffItems.date).getTime()
-          diffSeconds = (endDate - startDate) / 1000
+          diffSeconds = deffirenceBetweenThenAndNow(giffItems.date)
 
-          if (diffSeconds < 3600) {
-            commit('FETCH_GIFF_ITEMS', giffItems.data)
+          /*
+           * Use the cached data and not the API if there is no new data
+           * avaible in the cache, and if the cache is less than 1 hour old
+           */
+          if (diffSeconds < 3600 && offset < giffItems.data.length) {
+            commit('FETCH_GIFF_ITEMS', {
+              data: giffItems.data.slice(offset, offset + 10)
+            })
             resolve()
             return
           }
         }
 
         axios
-          .get('https://api.giphy.com/v1/gifs/trending?api_key=kqFn5fZG8yAhpJHmmJFW6jzI9zMlXv3I&limit=20')
+          .get(api + '/trending?offset=' + offset)
           .then((response) => {
-            let data = []
-            response.data.data.forEach((element) => {
-              data.push({
-                url: element.images.downsized_medium.url,
-                title: element.title
-              })
+            commit('FETCH_GIFF_ITEMS', {
+              cacheData: {
+                key: 'giffItems'
+              },
+              data: response.data
             })
-
-            // Cache the data to localstorage
-            localStorage.setItem('giffItems', JSON.stringify({
-              date: new Date(),
-              data: data
-            }))
-            commit('FETCH_GIFF_ITEMS', data)
             resolve()
           })
           .catch((error) => {
@@ -58,7 +73,7 @@ export default new Vuex.Store({
           })
       })
     },
-    searchGiffs ({ commit }, query) {
+    searchGiffs ({ commit }, {query, offset}) {
       return new Promise((resolve, reject) => {
         if (!query) {
           resolve()
@@ -66,41 +81,36 @@ export default new Vuex.Store({
         }
 
         let diffSeconds
-        let startDate
         const queryLower = query.toLowerCase()
-        let giffItems = JSON.parse(localStorage.getItem('giffItemsSearch' + queryLower))
-        let endDate = new Date().getTime()
+        let giffItems = getCachedData('giffItemsSearch' + queryLower)
 
-        // If the cache is older than 1 hour then get the data from the API
         if (giffItems) {
-          startDate = new Date(giffItems.date).getTime()
-          diffSeconds = (endDate - startDate) / 1000
+          diffSeconds = deffirenceBetweenThenAndNow(giffItems.date)
 
-          if (diffSeconds < 60 && queryLower === giffItems.query) {
-            commit('FETCH_GIFF_ITEMS', giffItems.data)
+          /*
+           * Use the cached data and not the API if there is no new data
+           * avaible, and if the cache is less than 60 seconds old, and if the
+           * current search term has previously been cached
+           */
+          if (diffSeconds < 60 && queryLower === giffItems.query && offset < giffItems.data.length) {
+            commit('FETCH_GIFF_ITEMS', {
+              data: giffItems.data.slice(offset, offset + 10)
+            })
             resolve()
             return
           }
         }
 
         axios
-          .get('https://api.giphy.com/v1/gifs/search?api_key=kqFn5fZG8yAhpJHmmJFW6jzI9zMlXv3I&limit=10&q=' + queryLower)
+          .get(api + '/search?offset=' + offset + '&query=' + queryLower)
           .then((response) => {
-            let data = []
-            response.data.data.forEach((element) => {
-              data.push({
-                url: element.images.downsized_medium.url,
-                title: element.title
-              })
+            commit('FETCH_GIFF_ITEMS', {
+              cacheData: {
+                key: 'giffItemsSearch' + queryLower,
+                query: queryLower
+              },
+              data: response.data
             })
-
-            // Cache the data to localstorage
-            localStorage.setItem('giffItemsSearch' + queryLower, JSON.stringify({
-              date: new Date(),
-              data: data,
-              query: queryLower
-            }))
-            commit('FETCH_GIFF_ITEMS', data)
             resolve()
           })
           .catch((error) => {
