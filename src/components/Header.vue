@@ -23,12 +23,13 @@ export default {
     }
   },
   methods: {
-    search: function () {
+    search () {
       // Only run a search if the user enters a query
       if (!this.query) return
 
       this.$router.push({path: '/search', query: {q: this.query}})
       this.$store.dispatch('searchGiffs', this.query)
+
       // Clear search box
       this.query = null
     }
