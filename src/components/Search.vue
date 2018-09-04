@@ -30,9 +30,16 @@ export default {
     ...mapState(['giffItems'])
   },
   watch: {
+    '$route' (to, from) {
+      if (to.path === '/search') {
+        this.$store.dispatch('searchGiffs', {query: to.query.q, offset: this.offset})
+      }
+    },
     giffItems (newVal) {
       // Increment the offset each time new content is loaded
-      this.offset += 10
+      this.offset = newVal.length + 10
+
+      if (!this.eventState) return
 
       if (newVal.length) {
         this.eventState.loaded()

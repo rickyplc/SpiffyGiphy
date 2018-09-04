@@ -28,7 +28,6 @@ export default {
       if (!this.query) return
 
       this.$router.push({path: '/search', query: {q: this.query}})
-      this.$store.dispatch('searchGiffs', this.query)
 
       // Clear search box
       this.query = null

@@ -31,7 +31,9 @@ export default {
   watch: {
     giffItems (newVal) {
       // Increment the offset each time new content is loaded
-      this.offset += 10
+      this.offset = newVal.length + 10
+
+      if (!this.eventState) return
 
       if (newVal.length) {
         this.eventState.loaded()

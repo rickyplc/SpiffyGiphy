@@ -4,6 +4,7 @@ import axios from 'axios'
 
 Vue.use(Vuex)
 
+let cachedSearchQuery
 const api = 'http://localhost:8081'
 
 const deffirenceBetweenThenAndNow = (startDate) => {
@@ -18,20 +19,33 @@ const getCachedData = (key) => {
   return JSON.parse(localStorage.getItem(key))
 }
 
+const setCacheData = (cacheData, data) => {
+  // Cache the data to local storage
+  if (cacheData) {
+    cacheData.date = new Date()
+    cacheData.data = data
+    localStorage.setItem(cacheData.key, JSON.stringify(cacheData))
+  }
+}
+
 export default new Vuex.Store({
   state: {
     giffItems: []
   },
   mutations: {
-    FETCH_GIFF_ITEMS (state, {cacheData, data}) {
+    FETCH_TRENDING_GIFF_ITEMS (state, {cacheData, data}) {
       state.giffItems = state.giffItems.concat(data)
-
-      // Cache the data to local storage
-      if (cacheData) {
-        cacheData.date = new Date()
-        cacheData.data = state.giffItems
-        localStorage.setItem(cacheData.key, JSON.stringify(cacheData))
+      setCacheData(cacheData, state.giffItems)
+    },
+    FETCH_SEARCH_GIFF_ITEMS (state, {cacheData, data, query = ''}) {
+      if (cachedSearchQuery === query) {
+        state.giffItems = state.giffItems.concat(data)
+      } else {
+        state.giffItems = data
       }
+
+      cachedSearchQuery = query
+      setCacheData(cacheData, state.giffItems)
     }
   },
   actions: {
@@ -48,7 +62,7 @@ export default new Vuex.Store({
            * avaible in the cache, and if the cache is less than 1 hour old
            */
           if (diffSeconds < 3600 && offset < giffItems.data.length) {
-            commit('FETCH_GIFF_ITEMS', {
+            commit('FETCH_TRENDING_GIFF_ITEMS', {
               data: giffItems.data.slice(offset, offset + 10)
             })
             resolve()
@@ -59,7 +73,7 @@ export default new Vuex.Store({
         axios
           .get(api + '/trending?offset=' + offset)
           .then((response) => {
-            commit('FETCH_GIFF_ITEMS', {
+            commit('FETCH_TRENDING_GIFF_ITEMS', {
               cacheData: {
                 key: 'giffItems'
               },
@@ -93,7 +107,7 @@ export default new Vuex.Store({
            * current search term has previously been cached
            */
           if (diffSeconds < 60 && queryLower === giffItems.query && offset < giffItems.data.length) {
-            commit('FETCH_GIFF_ITEMS', {
+            commit('FETCH_SEARCH_GIFF_ITEMS', {
               data: giffItems.data.slice(offset, offset + 10)
             })
             resolve()
@@ -104,12 +118,13 @@ export default new Vuex.Store({
         axios
           .get(api + '/search?offset=' + offset + '&query=' + queryLower)
           .then((response) => {
-            commit('FETCH_GIFF_ITEMS', {
+            commit('FETCH_SEARCH_GIFF_ITEMS', {
               cacheData: {
                 key: 'giffItemsSearch' + queryLower,
                 query: queryLower
               },
-              data: response.data
+              data: response.data,
+              query: queryLower
             })
             resolve()
           })
